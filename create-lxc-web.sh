@@ -57,6 +57,10 @@ WEBROOT="/var/www/html"
 FILEBROWSER_PORT="${FILEBROWSER_PORT:-8080}"
 FILEBROWSER_USER="${FILEBROWSER_USER:-admin}"
 FILEBROWSER_PASSWORD="${FILEBROWSER_PASSWORD:-CambiaEstaClave123!}"
+# El PATH que usa "pct exec" dentro del contenedor no siempre incluye
+# /usr/local/bin (donde el instalador de Filebrowser deja el binario), así
+# que lo invocamos siempre por ruta absoluta en lugar de confiar en el PATH.
+FILEBROWSER_BIN="/usr/local/bin/filebrowser"
 
 TEMPLATE_PATTERN="debian-12-standard"
 INSTALL_PHP="${INSTALL_PHP:-0}"     # 1 = sí, 0 = no (se puede preguntar/añadir después)
@@ -178,7 +182,7 @@ detect_installed() {
   HAS_NGINX=0; HAS_PHP=0; HAS_FILEBROWSER=0
   pct exec "$CTID" -- bash -c "command -v nginx" >/dev/null 2>&1 && HAS_NGINX=1
   pct exec "$CTID" -- bash -c "command -v php" >/dev/null 2>&1 && HAS_PHP=1
-  pct exec "$CTID" -- bash -c "command -v filebrowser" >/dev/null 2>&1 && HAS_FILEBROWSER=1
+  pct exec "$CTID" -- test -x "$FILEBROWSER_BIN" >/dev/null 2>&1 && HAS_FILEBROWSER=1
   return 0   # el resultado de las comprobaciones no debe hacer fallar al script (set -e)
 }
 
@@ -337,10 +341,14 @@ install_php() {
 
 install_filebrowser() {
   log "Instalando Filebrowser..."
-  pct exec "$CTID" -- bash -c "curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash"
+  # El propio instalador a veces dice "not in your path" aunque copie bien
+  # el binario, porque su comprobación final usa el PATH del proceso y este
+  # entorno no siempre incluye /usr/local/bin ahí. No dejamos que ese código
+  # de salida tumbe el script (set -e); comprobamos nosotros con ruta absoluta.
+  pct exec "$CTID" -- bash -c "curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash" || true
 
-  if ! pct exec "$CTID" -- bash -c "command -v filebrowser" >/dev/null 2>&1; then
-    err "El instalador de Filebrowser no dejó el binario listo. Comprueba la conexión a internet del contenedor y si https://github.com/filebrowser/get sigue siendo la fuente correcta."
+  if ! pct exec "$CTID" -- test -x "$FILEBROWSER_BIN"; then
+    err "No se encontró ${FILEBROWSER_BIN} tras instalar Filebrowser. Revisa la conexión a internet del contenedor y si https://github.com/filebrowser/get sigue siendo la fuente correcta."
     exit 1
   fi
 
@@ -361,8 +369,8 @@ WantedBy=multi-user.target
 SERVICE
 
   pct exec "$CTID" -- mkdir -p /etc/filebrowser
-  pct exec "$CTID" -- filebrowser config init --database /etc/filebrowser/filebrowser.db --root "${WEBROOT}" --port "${FILEBROWSER_PORT}" --address 0.0.0.0
-  pct exec "$CTID" -- filebrowser users add "${FILEBROWSER_USER}" "${FILEBROWSER_PASSWORD}" --database /etc/filebrowser/filebrowser.db --perm.admin
+  pct exec "$CTID" -- "$FILEBROWSER_BIN" config init --database /etc/filebrowser/filebrowser.db --root "${WEBROOT}" --port "${FILEBROWSER_PORT}" --address 0.0.0.0
+  pct exec "$CTID" -- "$FILEBROWSER_BIN" users add "${FILEBROWSER_USER}" "${FILEBROWSER_PASSWORD}" --database /etc/filebrowser/filebrowser.db --perm.admin
   pct push "$CTID" "$service_file" /etc/systemd/system/filebrowser.service
   rm -f "$service_file"
   pct exec "$CTID" -- bash -c "systemctl daemon-reload && systemctl enable filebrowser && systemctl restart filebrowser"
@@ -405,7 +413,7 @@ print_summary() {
     [[ "$SSL_ENABLED" -eq 1 ]] && proto="https"
     echo "  - Prueba PHP:            ${proto}://${phphost}/info.php  (bórrala cuando termines de comprobarla)"
   fi
-  if pct exec "$CTID" -- bash -c "command -v filebrowser" >/dev/null 2>&1; then
+  if pct exec "$CTID" -- test -x "$FILEBROWSER_BIN" >/dev/null 2>&1; then
     echo "  - Filebrowser:           http://${ct_ip}:${FILEBROWSER_PORT}/"
     echo "  - Usuario Filebrowser:   ${FILEBROWSER_USER}"
   fi
