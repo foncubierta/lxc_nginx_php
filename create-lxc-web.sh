@@ -337,7 +337,12 @@ install_php() {
 
 install_filebrowser() {
   log "Instalando Filebrowser..."
-  pct exec "$CTID" -- bash -c "curl -fsSL https://raw.githubusercontent.com/filebrowser/filebrowser/master/install.sh | bash"
+  pct exec "$CTID" -- bash -c "curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash"
+
+  if ! pct exec "$CTID" -- bash -c "command -v filebrowser" >/dev/null 2>&1; then
+    err "El instalador de Filebrowser no dejó el binario listo. Comprueba la conexión a internet del contenedor y si https://github.com/filebrowser/get sigue siendo la fuente correcta."
+    exit 1
+  fi
 
   local service_file
   service_file=$(mktemp)
