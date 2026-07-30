@@ -77,6 +77,19 @@ log()  { echo -e "\e[32m[+]\e[0m $*"; }
 warn() { echo -e "\e[33m[!]\e[0m $*"; }
 err()  { echo -e "\e[31m[x]\e[0m $*" >&2; }
 
+# gen_password [longitud]  ->  cadena alfanumérica aleatoria (sin pipes:
+# con "set -o pipefail" activo, un patrón tipo "tr ... < /dev/urandom |
+# head -c N" puede matar el script por SIGPIPE en cuanto head corta el flujo)
+gen_password() {
+  local length="${1:-16}"
+  local chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  local pass="" i
+  for ((i = 0; i < length; i++)); do
+    pass+="${chars:RANDOM % ${#chars}:1}"
+  done
+  printf '%s' "$pass"
+}
+
 usage() {
   cat <<USAGE
 Uso:
@@ -368,6 +381,14 @@ User=root
 WantedBy=multi-user.target
 SERVICE
 
+  # Filebrowser exige contraseñas de 12+ caracteres; si la que tenemos es
+  # más corta (por defecto insuficiente o respuesta manual), generamos una
+  # seleccionada al azar en vez de dejar que "users add" falle a medias.
+  if [[ ${#FILEBROWSER_PASSWORD} -lt 12 ]]; then
+    warn "La contraseña de Filebrowser tiene menos de 12 caracteres (mínimo exigido). Generando una nueva automáticamente..."
+    FILEBROWSER_PASSWORD="$(gen_password 16)"
+  fi
+
   pct exec "$CTID" -- mkdir -p /etc/filebrowser
   pct exec "$CTID" -- "$FILEBROWSER_BIN" config init --database /etc/filebrowser/filebrowser.db --root "${WEBROOT}" --port "${FILEBROWSER_PORT}" --address 0.0.0.0
   pct exec "$CTID" -- "$FILEBROWSER_BIN" users add "${FILEBROWSER_USER}" "${FILEBROWSER_PASSWORD}" --database /etc/filebrowser/filebrowser.db --perm.admin
@@ -416,6 +437,7 @@ print_summary() {
   if pct exec "$CTID" -- test -x "$FILEBROWSER_BIN" >/dev/null 2>&1; then
     echo "  - Filebrowser:           http://${ct_ip}:${FILEBROWSER_PORT}/"
     echo "  - Usuario Filebrowser:   ${FILEBROWSER_USER}"
+    echo "  - Contraseña Filebrowser: ${FILEBROWSER_PASSWORD}"
   fi
   echo "  - Webroot dentro del CT: ${WEBROOT}"
   echo
@@ -463,7 +485,7 @@ manage_existing_container() {
     DO_FILEBROWSER=1
     ask "Puerto para Filebrowser" FILEBROWSER_PORT
     ask "Usuario admin de Filebrowser" FILEBROWSER_USER
-    ask_secret "Contraseña de Filebrowser" FILEBROWSER_PASSWORD
+    ask_secret "Contraseña de Filebrowser (mínimo 12 caracteres)" FILEBROWSER_PASSWORD
   fi
 
   NGINX_PRESENT=0
@@ -538,7 +560,7 @@ create_new_container() {
   fi
   ask "Puerto de Filebrowser" FILEBROWSER_PORT
   ask "Usuario admin de Filebrowser" FILEBROWSER_USER
-  ask_secret "Contraseña de Filebrowser" FILEBROWSER_PASSWORD
+  ask_secret "Contraseña de Filebrowser (mínimo 12 caracteres)" FILEBROWSER_PASSWORD
   if ask_yes_no "¿Instalar PHP-FPM ahora? (si dices que no, podrás añadirlo luego ejecutando este mismo script con este CTID)" "n"; then
     INSTALL_PHP=1
   else
