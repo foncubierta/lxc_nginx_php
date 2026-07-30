@@ -10,9 +10,27 @@ Script para Proxmox VE que crea (o completa) un contenedor LXC Debian 12 listo p
 
 ## Uso
 
-Copia `create-lxc-web.sh` al nodo Proxmox y ejecútalo como root:
+Descarga el script directamente en el nodo Proxmox (shell del propio nodo) y ejecútalo como root:
 
 ```bash
+curl -fsSL -O https://raw.githubusercontent.com/foncubierta/lxc_nginx_php/main/create-lxc-web.sh
+chmod +x create-lxc-web.sh
+bash create-lxc-web.sh
+```
+
+O, si prefieres `wget`:
+
+```bash
+wget https://raw.githubusercontent.com/foncubierta/lxc_nginx_php/main/create-lxc-web.sh
+chmod +x create-lxc-web.sh
+bash create-lxc-web.sh
+```
+
+También puedes clonar el repositorio completo:
+
+```bash
+git clone https://github.com/foncubierta/lxc_nginx_php.git
+cd lxc_nginx_php
 bash create-lxc-web.sh
 ```
 
