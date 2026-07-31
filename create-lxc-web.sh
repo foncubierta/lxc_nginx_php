@@ -488,7 +488,6 @@ manage_existing_container() {
     DO_FILEBROWSER=1
     ask "Puerto para Filebrowser" FILEBROWSER_PORT
     ask "Usuario admin de Filebrowser" FILEBROWSER_USER
-    ask "Longitud mínima de contraseña para Filebrowser" FILEBROWSER_MIN_PASSWORD_LENGTH
     ask_secret "Contraseña de Filebrowser (mínimo ${FILEBROWSER_MIN_PASSWORD_LENGTH} caracteres)" FILEBROWSER_PASSWORD
   fi
 
@@ -564,7 +563,6 @@ create_new_container() {
   fi
   ask "Puerto de Filebrowser" FILEBROWSER_PORT
   ask "Usuario admin de Filebrowser" FILEBROWSER_USER
-  ask "Longitud mínima de contraseña para Filebrowser" FILEBROWSER_MIN_PASSWORD_LENGTH
   ask_secret "Contraseña de Filebrowser (mínimo ${FILEBROWSER_MIN_PASSWORD_LENGTH} caracteres)" FILEBROWSER_PASSWORD
   if ask_yes_no "¿Instalar PHP-FPM ahora? (si dices que no, podrás añadirlo luego ejecutando este mismo script con este CTID)" "n"; then
     INSTALL_PHP=1
