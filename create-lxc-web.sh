@@ -42,7 +42,7 @@ set -euo pipefail
 
 CTID="${CTID:-200}"
 CT_HOSTNAME="${CT_HOSTNAME:-web01}"
-STORAGE="${STORAGE:-local-lvm}"
+STORAGE="${STORAGE:-local-zfs}"
 TEMPLATE_STORAGE="${TEMPLATE_STORAGE:-local}"
 DISK_SIZE="${DISK_SIZE:-8}"
 MEMORY="${MEMORY:-1024}"
